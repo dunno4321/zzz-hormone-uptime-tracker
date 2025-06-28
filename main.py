@@ -124,15 +124,20 @@ try:
     # if eve was onfield last tick
     prev_eve = False
     # if we were in combat last tick
-    prev_combat = True
+    prev_combat = False
+    in_combat = False
+    evelyn = False
     # timer object
     timer = Timer()
     hp_since_up = 0
 
-    def update_timer():
-        global hp_since_up, evelyn, prev_eve
+    # banger name ik
+    def update_things():
+        global hp_since_up, in_combat, prev_combat, prev_eve, evelyn, hp_up, hp_ready, hp_starttime, state
         # are we in combat
         in_combat = find_basicatk()
+        evelyn = find_evelyn()
+        # print(in_combat, evelyn)
         # if we are not in combat
         if not in_combat:
             # if we were in combat last tick
@@ -146,27 +151,6 @@ try:
             timer.pause()
         # calculate how long since hormone was up
         hp_since_up = (datetime.now() - hp_starttime - timedelta(seconds=timer.tick())).seconds
-
-    def ready_callback(app):
-        global hp_since_up, state
-        print("callback READY")
-        while state == READY_STATE:
-            update_timer()
-        app.quit()
-
-    def up_callback(app):
-        global hp_since_up, state
-        print("callback UP")
-        while state == UP_STATE:
-            update_timer()
-        app.quit()
-    def cooldown_callback(app):
-        global hp_since_up, state
-        print("callback COOLDOWN")
-        while state == COOLDOWN_STATE:
-            update_timer()
-        app.quit()
-    while True:
         # optional debug
         # print(hp_since_up)
         # if we are in combat, hormone punk is ready, and eve was just switched in
@@ -197,15 +181,47 @@ try:
             state = READY_STATE
             threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 100), duration=60, callbackfunc=ready_callback), daemon=True).start()
             print("after overlay3")
+        prev_eve = evelyn
+        prev_combat = in_combat
+
+    def ready_callback(app):
+        global hp_since_up, state
+        print("callback READY")
+        while state == READY_STATE:
+            update_things()
+        print("END OF READY")
+        app.quit()
+
+    def up_callback(app):
+        global hp_since_up, state
+        print("callback UP")
+        while state == UP_STATE:
+            update_things()
+            if hp_since_up >= 10:
+                state = COOLDOWN_STATE
+        print("END OF UPTIME")
+        app.quit()
+    def cooldown_callback(app):
+        global hp_since_up, state
+        print("callback COOLDOWN")
+        while state == COOLDOWN_STATE:
+            update_things()
+            if hp_since_up >= 20:
+                state = READY_STATE
+        print("END OF COOLDOWN")
+        app.quit()
+
+    while True:
+        update_things()
         # helpful information, to be converted to an overlay
         # hopefully today
-        if hp_ready:
+        if state == READY_STATE:
             timer.reset()
             print("READY")
-        elif hp_up:
+        elif state == UP_STATE:
             print("UP")
             state = UP_STATE
-        elif not hp_up and not hp_ready:
+        elif state == COOLDOWN_STATE:
             print("COOLDOWN")
             state = COOLDOWN_STATE
         # update variables so we can do fancy logic at the start
