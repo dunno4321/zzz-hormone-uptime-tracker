@@ -77,6 +77,7 @@ def find_evelyn():
 
 
 def overlay_png_on_screen(image_path, imgsize=(100, 100), location=(None,None), duration=30, callbackfunc=None):
+    print("OVERLAY CALLED: " + image_path)
     app = QApplication(sys.argv)
 
     # Create overlay window
@@ -113,10 +114,10 @@ def overlay_png_on_screen(image_path, imgsize=(100, 100), location=(None,None), 
 
     # Thread to check for early close
     if callbackfunc is not None:
+        print("set up callback")
         threading.Thread(target=callbackfunc, args=(app,), daemon=True).start()
 
     sys.exit(app.exec_())
-
 
 try:
     # set up variables
@@ -126,17 +127,10 @@ try:
     prev_combat = True
     # timer object
     timer = Timer()
+    hp_since_up = 0
 
-    def ready_callback(app):
-        global state
-        while state == READY_STATE:
-            pass
-
-    def up_callback(app):
-        pass
-    def cooldown_callback(app):
-        pass
-    while True:
+    def update_timer():
+        global hp_since_up, evelyn, prev_eve
         # are we in combat
         in_combat = find_basicatk()
         # if we are not in combat
@@ -150,10 +144,29 @@ try:
         elif in_combat and not prev_combat:
             # pause timer
             timer.pause()
-        # check if evelyn is the active agent
-        evelyn = find_evelyn()
         # calculate how long since hormone was up
         hp_since_up = (datetime.now() - hp_starttime - timedelta(seconds=timer.tick())).seconds
+
+    def ready_callback(app):
+        global hp_since_up, state
+        print("callback READY")
+        while state == READY_STATE:
+            update_timer()
+        app.quit()
+
+    def up_callback(app):
+        global hp_since_up, state
+        print("callback UP")
+        while state == UP_STATE:
+            update_timer()
+        app.quit()
+    def cooldown_callback(app):
+        global hp_since_up, state
+        print("callback COOLDOWN")
+        while state == COOLDOWN_STATE:
+            update_timer()
+        app.quit()
+    while True:
         # optional debug
         # print(hp_since_up)
         # if we are in combat, hormone punk is ready, and eve was just switched in
@@ -165,22 +178,30 @@ try:
             # hormone is not ready to be up
             hp_ready = False
             # TODO: overlay here
+            state = UP_STATE
+            threading.Thread(overlay_png_on_screen("assets/active.png", imgsize=(100,100), location=(100,100), duration=60, callbackfunc=up_callback), daemon=True).start()
+            print("after overlay")
         # if hormone is up, and it's been more than 10 seconds but less than 20 seconds
         elif hp_up and (10 <= hp_since_up < 20):
             # hormone punk not up, but on cooldown
             hp_up = False
             # TODO: overlay here
+            state = COOLDOWN_STATE
+            threading.Thread(overlay_png_on_screen("assets/cooldown.png", imgsize=(100, 100), location=(100, 100), duration=60, callbackfunc=cooldown_callback), daemon=True).start()
+            print("after overlay2")
         # if it's been more than 20 seconds since hormone went up
         elif hp_since_up >= 20:
             # hormone punk is ready
             # TODO: overlay here
             hp_ready = True
+            state = READY_STATE
+            threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 100), duration=60, callbackfunc=ready_callback), daemon=True).start()
+            print("after overlay3")
         # helpful information, to be converted to an overlay
         # hopefully today
         if hp_ready:
             timer.reset()
             print("READY")
-            state = READY_STATE
         elif hp_up:
             print("UP")
             state = UP_STATE
