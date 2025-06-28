@@ -75,7 +75,6 @@ def find_evelyn():
     except pyautogui.ImageNotFoundException:
         return False
 
-
 def overlay_png_on_screen(image_path, imgsize=(100, 100), location=(None,None), duration=30, callbackfunc=None):
     print("OVERLAY CALLED: " + image_path)
     app = QApplication(sys.argv)
@@ -117,7 +116,7 @@ def overlay_png_on_screen(image_path, imgsize=(100, 100), location=(None,None), 
         print("set up callback")
         threading.Thread(target=callbackfunc, args=(app,), daemon=True).start()
 
-    sys.exit(app.exec_())
+    app.exec_()
 
 try:
     # set up variables
@@ -163,7 +162,7 @@ try:
             hp_ready = False
             # TODO: overlay here
             state = UP_STATE
-            threading.Thread(overlay_png_on_screen("assets/active.png", imgsize=(100,100), location=(100,100), duration=60, callbackfunc=up_callback), daemon=True).start()
+            threading.Thread(overlay_png_on_screen("assets/active.png", imgsize=(100,100), location=(100,100), duration=20, callbackfunc=up_callback)).start()
             print("after overlay")
         # if hormone is up, and it's been more than 10 seconds but less than 20 seconds
         elif hp_up and (10 <= hp_since_up < 20):
@@ -171,15 +170,15 @@ try:
             hp_up = False
             # TODO: overlay here
             state = COOLDOWN_STATE
-            threading.Thread(overlay_png_on_screen("assets/cooldown.png", imgsize=(100, 100), location=(100, 100), duration=60, callbackfunc=cooldown_callback), daemon=True).start()
+            threading.Thread(overlay_png_on_screen("assets/cooldown.png", imgsize=(100, 100), location=(100, 150), duration=20, callbackfunc=cooldown_callback)).start()
             print("after overlay2")
         # if it's been more than 20 seconds since hormone went up
-        elif hp_since_up >= 20:
+        elif hp_since_up >= 20 and not hp_ready:
             # hormone punk is ready
             # TODO: overlay here
             hp_ready = True
             state = READY_STATE
-            threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 100), duration=60, callbackfunc=ready_callback), daemon=True).start()
+            threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 250), duration=20, callbackfunc=ready_callback)).start()
             print("after overlay3")
         prev_eve = evelyn
         prev_combat = in_combat
@@ -189,6 +188,7 @@ try:
         print("callback READY")
         while state == READY_STATE:
             update_things()
+            print("READY: " + str(state))
         print("END OF READY")
         app.quit()
 
@@ -199,13 +199,16 @@ try:
             update_things()
             if hp_since_up >= 10:
                 state = COOLDOWN_STATE
+            print("UP: " + str(state))
         print("END OF UPTIME")
         app.quit()
+
     def cooldown_callback(app):
         global hp_since_up, state
         print("callback COOLDOWN")
         while state == COOLDOWN_STATE:
             update_things()
+            print("COOLDOWN: " + str(state))
             if hp_since_up >= 20:
                 state = READY_STATE
         print("END OF COOLDOWN")
