@@ -93,7 +93,7 @@ def setup_pyqt():
     screen = app.primaryScreen()
     return app, screen
 
-def show_image(image_path, imgsize=(100,100), location=(100,100)):
+def create_image_overlay(image_path, imgsize=(100,100), location=(100,100)):
     """Overlays an image on the user's screen"""
     # pyqt stuff chatgpt made lmao
     label = QLabel()
@@ -122,11 +122,6 @@ def show_image(image_path, imgsize=(100,100), location=(100,100)):
 
     return label
 
-def overlay_png_on_screen(image_path, imgsize=(100, 100), location=(None,None)):
-    """TODO: compress into one function with show_image"""
-    # print("OVERLAY CALLED: " + image_path)
-    return show_image(image_path, imgsize=imgsize, location=location)
-
 try:
     # set up variables
     # if eve was onfield last tick
@@ -146,11 +141,11 @@ try:
     screen = app.primaryScreen()
     # overlay setup
     # TODO: allow changing of these images/positions/sizes etc (e.g. set draggable maybe)
-    active_icon = overlay_png_on_screen("./assets/active.png", imgsize=(100,100), location=(100,100))
+    active_icon = create_image_overlay("./assets/active.png", imgsize=(100,100), location=(100,100))
     active_icon.hide()
-    ready_icon = overlay_png_on_screen("./assets/neutral.png", imgsize=(100,100), location=(100,100))
+    ready_icon = create_image_overlay("./assets/neutral.png", imgsize=(100,100), location=(100,100))
     ready_icon.show()
-    cooldown_icon = overlay_png_on_screen("./assets/cooldown.png", imgsize=(100,100), location=(100,100))
+    cooldown_icon = create_image_overlay("./assets/cooldown.png", imgsize=(100,100), location=(100,100))
     cooldown_icon.hide()
 
     # banger name ik
@@ -167,15 +162,11 @@ try:
             if prev_combat:
                 # start the timer to keep hormone uptime accurate
                 timer.start()
-            # debug
-            # print("PAUSED")
         elif in_combat and not prev_combat:
             # pause timer
             timer.pause()
         # calculate how long since hormone was up
         hp_since_up = (datetime.now() - hp_starttime - timedelta(seconds=timer.tick())).seconds
-        # optional debug
-        # print(hp_since_up)
         # if we are in combat, were in combat last tick (to prevent ults/pauses from triggering the uptime), hormone punk is ready, and eve was just switched in
         if in_combat and prev_combat and evelyn and hp_ready and not prev_eve:
             # update overlay
@@ -190,10 +181,6 @@ try:
             hp_starttime = datetime.now()
             # hormone is not ready to go up
             hp_ready = False
-            # update state (not used anywhere anymore)
-            # state = UP_STATE
-            # old overlay code, didnt work at all lmao
-            # threading.Thread(overlay_png_on_screen("assets/active.png", imgsize=(100,100), location=(100,100), duration=20, callbackfunc=up_callback), daemon=True).start()
         # if hormone is up, and it's been more than 10 seconds but less than 20 seconds (cooldown)
         elif hp_up and (10 <= hp_since_up < 20):
             # update overlay
@@ -202,9 +189,6 @@ try:
             cooldown_icon.show()
             # hormone punk not up, but on cooldown
             hp_up = False
-            # update state (not used anymore)
-            # state = COOLDOWN_STATE
-            # threading.Thread(overlay_png_on_screen("assets/cooldown.png", imgsize=(100, 100), location=(100, 200), duration=20, callbackfunc=cooldown_callback), daemon=True).start()
         # if it's been more than 20 seconds since hormone went up
         elif hp_since_up >= 20 and not hp_ready:
             # update overlay
@@ -213,47 +197,13 @@ try:
             cooldown_icon.hide()
             # hormone punk cooldown over, is ready to go
             hp_ready = True
-            # update state (not used anymore)
-            # state = READY_STATE
-            # threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 300), duration=20, callbackfunc=ready_callback), daemon=True).start()
         prev_eve = evelyn
         prev_combat = in_combat
-
-    # the things that used the states
-    # def ready_callback(app):
-    #     global hp_since_up, state
-    #     print("callback READY")
-    #     while state == READY_STATE:
-    #         update_things()
-    #     app.quit()
-    #
-    # def up_callback(app):
-    #     global hp_since_up, state
-    #     print("callback UP")
-    #     while state == UP_STATE:
-    #         update_things()
-    #     print("END OF UPTIME")
-    #     app.quit()
-    #
-    # def cooldown_callback(app):
-    #     global hp_since_up, state
-    #     print("callback COOLDOWN")
-    #     while state == COOLDOWN_STATE:
-    #         update_things()
-    #     print("END OF COOLDOWN")
-    #     app.quit()
 
     while True:
         # banger names ik
         update_things()
         app.processEvents()
-        # if state == READY_STATE:
-        #     timer.reset()
-        #     print("READY")
-        # elif state == UP_STATE:
-        #     print("UP")
-        # elif state == COOLDOWN_STATE:
-        #     print("COOLDOWN")
 except KeyboardInterrupt:
     # exit gracefully
     # or smth
