@@ -63,7 +63,7 @@ class Timer:
 
 def find_basicatk():
     try:
-        pyautogui.locateOnScreen('basic_attack.png', confidence=0.55) # TODO: 0.5
+        pyautogui.locateOnScreen('basic_attack.png', confidence=0.55)
         return True
     except pyautogui.ImageNotFoundException:
         return False
