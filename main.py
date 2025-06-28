@@ -2,23 +2,31 @@ from PyQt5.QtWidgets import QApplication, QLabel
 from datetime import datetime, timedelta
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPixmap
-import threading
 import pyautogui
 import time
 import sys
 
+"""
+Fair warning, this code is very messy but it works.
+Cleanup will happen, I just want it to work for now lmao
+"""
+
+# fancy variables that are no longer used
 READY_STATE = 0
 UP_STATE = 1
 COOLDOWN_STATE = 2
 state = READY_STATE
 prev_state = READY_STATE
+# fancy variables that are used
 hp_up = False
 hp_ready = True
 hp_starttime = datetime.now()
+# allow the user to swap to zzz before starting
 time.sleep(2)
 
 
 class Timer:
+    """Timer class for handling pauses/ult animations"""
     def __init__(self):
         self.start_time = 0
         self.elapsed_time = 0
@@ -62,27 +70,32 @@ class Timer:
         return round(self.elapsed_time)
 
 def find_basicatk():
+    """Finds the basic attack button, used for determining if combat or not"""
     try:
-        pyautogui.locateOnScreen('basic_attack.png', confidence=0.55)
+        pyautogui.locateOnScreen('./basic_attack.png', confidence=0.55)
         return True
     except pyautogui.ImageNotFoundException:
         return False
 
 def find_evelyn():
+    """Finds evelyn/the agent in evelyn.png, used for determining if eve is the active agent"""
     try:
-        pyautogui.locateOnScreen('evelyn.png', confidence=0.9)
+        pyautogui.locateOnScreen('./evelyn.png', confidence=0.9)
         return True
     except pyautogui.ImageNotFoundException:
         return False
 
 def setup_pyqt():
+    """Sets up PyQt5. Did not know what I was doing when i made this but it works so idc"""
     app = QApplication(sys.argv)
 
     # Create overlay window
     screen = app.primaryScreen()
     return app, screen
 
-def show_image(image_path, app, screen, imgsize=(100,100), location=(100,100)):
+def show_image(image_path, imgsize=(100,100), location=(100,100)):
+    """Overlays an image on the user's screen"""
+    # pyqt stuff chatgpt made lmao
     label = QLabel()
     label.setWindowFlags(
         Qt.FramelessWindowHint |
@@ -95,24 +108,24 @@ def show_image(image_path, app, screen, imgsize=(100,100), location=(100,100)):
     label.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     pixmap = QPixmap(image_path)
+    # resize image
     pixmap = pixmap.scaled(imgsize[0], imgsize[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
     label.setPixmap(pixmap)
     label.resize(pixmap.size())
 
-    if location[0] is None and location[1] is None:
-        screen_geometry = screen.geometry()
-        x = (screen_geometry.width() - pixmap.width()) // 2
-        y = (screen_geometry.height() - pixmap.height()) // 2
-        label.move(x, y)
+
+    if location[0] is None or location[1] is None:
+        # default loc
+        label.move(100, 100)
     else:
         label.move(location[0], location[1])
 
-    label.show()
     return label
 
-def overlay_png_on_screen(image_path, app, screen, imgsize=(100, 100), location=(None,None)):
-    print("OVERLAY CALLED: " + image_path)
-    return show_image(image_path, app, screen, imgsize=imgsize, location=location)
+def overlay_png_on_screen(image_path, imgsize=(100, 100), location=(None,None)):
+    """TODO: compress into one function with show_image"""
+    # print("OVERLAY CALLED: " + image_path)
+    return show_image(image_path, imgsize=imgsize, location=location)
 
 try:
     # set up variables
@@ -120,80 +133,93 @@ try:
     prev_eve = False
     # if we were in combat last tick
     prev_combat = False
+    # are we in combat rn
     in_combat = False
+    # is eve onfield
     evelyn = False
     # timer object
     timer = Timer()
+    # hormone punk tracking timer
     hp_since_up = 0
+    # pyqt setup
     app = QApplication(sys.argv)
     screen = app.primaryScreen()
-    active_icon = overlay_png_on_screen("assets/active.png", app, screen, imgsize=(100,100), location=(100,100))
+    # overlay setup
+    # TODO: allow changing of these images/positions/sizes etc (e.g. set draggable maybe)
+    active_icon = overlay_png_on_screen("./assets/active.png", imgsize=(100,100), location=(100,100))
     active_icon.hide()
-    ready_icon = overlay_png_on_screen("assets/neutral.png", app, screen, imgsize=(100,100), location=(100,100))
-    ready_icon.hide()
-    cooldown_icon = overlay_png_on_screen("assets/cooldown.png", app, screen, imgsize=(100,100), location=(100,100))
+    ready_icon = overlay_png_on_screen("./assets/neutral.png", imgsize=(100,100), location=(100,100))
+    ready_icon.show()
+    cooldown_icon = overlay_png_on_screen("./assets/cooldown.png", imgsize=(100,100), location=(100,100))
     cooldown_icon.hide()
 
     # banger name ik
     def update_things():
+        # scuffed code lmao
         global hp_since_up, in_combat, prev_combat, prev_eve, evelyn, hp_up, hp_ready, hp_starttime, state, ready_icon, cooldown_icon, active_icon
         # are we in combat
         in_combat = find_basicatk()
+        # is eve the active agent
         evelyn = find_evelyn()
         # print(in_combat, evelyn)
-        # if we are not in combat
         if not in_combat:
             # if we were in combat last tick
             if prev_combat:
                 # start the timer to keep hormone uptime accurate
                 timer.start()
             # debug
-            print("PAUSED")
+            # print("PAUSED")
         elif in_combat and not prev_combat:
             # pause timer
             timer.pause()
         # calculate how long since hormone was up
         hp_since_up = (datetime.now() - hp_starttime - timedelta(seconds=timer.tick())).seconds
         # optional debug
-        print(hp_since_up)
-        # if we are in combat, hormone punk is ready, and eve was just switched in
+        # print(hp_since_up)
+        # if we are in combat, were in combat last tick (to prevent ults/pauses from triggering the uptime), hormone punk is ready, and eve was just switched in
         if in_combat and prev_combat and evelyn and hp_ready and not prev_eve:
+            # update overlay
             ready_icon.hide()
             active_icon.show()
             cooldown_icon.hide()
+            # reset timer
             timer.reset()
             # hormone is up
             hp_up = True
             # start time is now
             hp_starttime = datetime.now()
-            # hormone is not ready to be up
+            # hormone is not ready to go up
             hp_ready = False
-            # TODO: overlay here
-            state = UP_STATE
+            # update state (not used anywhere anymore)
+            # state = UP_STATE
+            # old overlay code, didnt work at all lmao
             # threading.Thread(overlay_png_on_screen("assets/active.png", imgsize=(100,100), location=(100,100), duration=20, callbackfunc=up_callback), daemon=True).start()
-        # if hormone is up, and it's been more than 10 seconds but less than 20 seconds
+        # if hormone is up, and it's been more than 10 seconds but less than 20 seconds (cooldown)
         elif hp_up and (10 <= hp_since_up < 20):
+            # update overlay
             ready_icon.hide()
             active_icon.hide()
             cooldown_icon.show()
             # hormone punk not up, but on cooldown
             hp_up = False
-            # TODO: overlay here
-            state = COOLDOWN_STATE
+            # update state (not used anymore)
+            # state = COOLDOWN_STATE
             # threading.Thread(overlay_png_on_screen("assets/cooldown.png", imgsize=(100, 100), location=(100, 200), duration=20, callbackfunc=cooldown_callback), daemon=True).start()
         # if it's been more than 20 seconds since hormone went up
         elif hp_since_up >= 20 and not hp_ready:
+            # update overlay
             ready_icon.show()
             active_icon.hide()
             cooldown_icon.hide()
-            # hormone punk is ready
-            # TODO: overlay here
+            # hormone punk cooldown over, is ready to go
             hp_ready = True
-            state = READY_STATE
+            # update state (not used anymore)
+            # state = READY_STATE
             # threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 300), duration=20, callbackfunc=ready_callback), daemon=True).start()
         prev_eve = evelyn
         prev_combat = in_combat
 
+    # the things that used the states
     # def ready_callback(app):
     #     global hp_since_up, state
     #     print("callback READY")
@@ -218,6 +244,7 @@ try:
     #     app.quit()
 
     while True:
+        # banger names ik
         update_things()
         app.processEvents()
         # if state == READY_STATE:
@@ -228,4 +255,6 @@ try:
         # elif state == COOLDOWN_STATE:
         #     print("COOLDOWN")
 except KeyboardInterrupt:
-    pass
+    # exit gracefully
+    # or smth
+    sys.exit(0)
