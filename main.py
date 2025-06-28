@@ -63,7 +63,7 @@ class Timer:
 
 def find_basicatk():
     try:
-        pyautogui.locateOnScreen('basic_attack.png', confidence=0.5)
+        pyautogui.locateOnScreen('basic_attack.png', confidence=0.55) # TODO: 0.5
         return True
     except pyautogui.ImageNotFoundException:
         return False
@@ -157,7 +157,10 @@ try:
         # optional debug
         print(hp_since_up)
         # if we are in combat, hormone punk is ready, and eve was just switched in
-        if in_combat and evelyn and hp_ready and not prev_eve:
+        if in_combat and prev_combat and evelyn and hp_ready and not prev_eve:
+            ready_icon.hide()
+            active_icon.show()
+            cooldown_icon.hide()
             timer.reset()
             # hormone is up
             hp_up = True
@@ -167,29 +170,26 @@ try:
             hp_ready = False
             # TODO: overlay here
             state = UP_STATE
-            ready_icon.hide()
-            active_icon.show()
-            cooldown_icon.hide()
             # threading.Thread(overlay_png_on_screen("assets/active.png", imgsize=(100,100), location=(100,100), duration=20, callbackfunc=up_callback), daemon=True).start()
         # if hormone is up, and it's been more than 10 seconds but less than 20 seconds
         elif hp_up and (10 <= hp_since_up < 20):
+            ready_icon.hide()
+            active_icon.hide()
+            cooldown_icon.show()
             # hormone punk not up, but on cooldown
             hp_up = False
             # TODO: overlay here
             state = COOLDOWN_STATE
-            ready_icon.hide()
-            active_icon.hide()
-            cooldown_icon.show()
             # threading.Thread(overlay_png_on_screen("assets/cooldown.png", imgsize=(100, 100), location=(100, 200), duration=20, callbackfunc=cooldown_callback), daemon=True).start()
         # if it's been more than 20 seconds since hormone went up
         elif hp_since_up >= 20 and not hp_ready:
+            ready_icon.show()
+            active_icon.hide()
+            cooldown_icon.hide()
             # hormone punk is ready
             # TODO: overlay here
             hp_ready = True
             state = READY_STATE
-            ready_icon.show()
-            active_icon.hide()
-            cooldown_icon.hide()
             # threading.Thread(overlay_png_on_screen("assets/neutral.png", imgsize=(100, 100), location=(100, 300), duration=20, callbackfunc=ready_callback), daemon=True).start()
         prev_eve = evelyn
         prev_combat = in_combat
