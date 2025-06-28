@@ -93,10 +93,31 @@ def setup_pyqt():
     screen = app.primaryScreen()
     return app, screen
 
+# chatgpt bc i dont know pyqt5
+class DraggableLabel(QLabel):
+    def __init__(self, *args, **kwargs):
+        super(DraggableLabel, self).__init__(*args, **kwargs)
+        self._drag_pos = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self._drag_pos is not None:
+            self.move(event.globalPos() - self._drag_pos)
+            print(event.globalPos() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+        event.accept()
+
 def create_image_overlay(image_path, imgsize=(100,100), location=(100,100)):
     """Overlays an image on the user's screen"""
     # pyqt stuff chatgpt made lmao
-    label = QLabel()
+    label = DraggableLabel()
     label.setWindowFlags(
         Qt.FramelessWindowHint |
         Qt.WindowStaysOnTopHint |
@@ -105,10 +126,10 @@ def create_image_overlay(image_path, imgsize=(100,100), location=(100,100)):
     )
     label.setAttribute(Qt.WA_TranslucentBackground)
     label.setAttribute(Qt.WA_NoSystemBackground, True)
-    label.setAttribute(Qt.WA_TransparentForMouseEvents)
+    # Removed WA_TransparentForMouseEvents so it can receive mouse events
+    # label.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     pixmap = QPixmap(image_path)
-    # resize image
     pixmap = pixmap.scaled(imgsize[0], imgsize[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
     label.setPixmap(pixmap)
     label.resize(pixmap.size())
@@ -139,13 +160,16 @@ try:
     # pyqt setup
     app = QApplication(sys.argv)
     screen = app.primaryScreen()
+    w, h = screen.geometry().width(), screen.geometry().height()
+    mults = 335 / 1920, 74 / 1080
+    overlay_loc =  round(w * mults[0]), round(h * mults[1])
     # overlay setup
     # TODO: allow changing of these images/positions/sizes etc (e.g. set draggable maybe)
-    active_icon = create_image_overlay("./assets/active.png", imgsize=(100,100), location=(100,100))
+    active_icon = create_image_overlay("./assets/active.png", imgsize=(100,100), location=overlay_loc)
     active_icon.hide()
-    ready_icon = create_image_overlay("./assets/neutral.png", imgsize=(100,100), location=(100,100))
+    ready_icon = create_image_overlay("./assets/neutral.png", imgsize=(100,100), location=overlay_loc)
     ready_icon.show()
-    cooldown_icon = create_image_overlay("./assets/cooldown.png", imgsize=(100,100), location=(100,100))
+    cooldown_icon = create_image_overlay("./assets/cooldown.png", imgsize=(100,100), location=overlay_loc)
     cooldown_icon.hide()
 
     # banger name ik
